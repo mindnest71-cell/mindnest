@@ -118,6 +118,8 @@ async def reset_password(request: ResetPasswordRequest):
     user.password = get_password_hash(request.new_password)
     user.save()
     
+    return {"message": "Password reset successfully"}
+    
 class ChangePasswordRequest(BaseModel):
     user_id: str
     old_password: str

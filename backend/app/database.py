@@ -5,8 +5,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# MongoDB connection from environment variable
-MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://u6720051_db_user:o8j35WYJQ5RfqmuO@mindnest.u9rgpny.mongodb.net/mindnest")
+# MongoDB connection from environment variable (REQUIRED)
+MONGO_URI = os.getenv("MONGO_URI")
+if not MONGO_URI:
+    raise ValueError("MONGO_URI environment variable is required")
 
 def connect_db():
     print("Connecting to MongoDB...")

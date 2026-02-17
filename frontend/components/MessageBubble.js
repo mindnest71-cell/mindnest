@@ -404,6 +404,12 @@ const MessageBubble = ({ text, isUser, timestamp, techniques, crisis_resources, 
                 <Text style={styles.text}>{text}</Text>
             </View>
 
+            <Animated.Text style={[
+                styles.timestamp,
+                isUser ? styles.userTimestamp : styles.botTimestamp,
+                { opacity: fadeAnim }
+            ]}>{timestamp}</Animated.Text>
+
             {isSevere ? (
                 <>
                     {renderCrisisResources()}
@@ -417,11 +423,6 @@ const MessageBubble = ({ text, isUser, timestamp, techniques, crisis_resources, 
                 </>
             )}
 
-            <Animated.Text style={[
-                styles.timestamp,
-                isUser ? styles.userTimestamp : styles.botTimestamp,
-                { opacity: fadeAnim }
-            ]}>{timestamp}</Animated.Text>
         </Animated.View>
     );
 };
@@ -457,17 +458,16 @@ const styles = StyleSheet.create({
     },
     timestamp: {
         fontSize: 12,
-        color: '#5D7A99',
-        marginTop: 4,
-        marginHorizontal: 4,
+        color: '#000000',
+        marginTop: 6,
     },
     userTimestamp: {
+        alignSelf: 'flex-end',
         textAlign: 'right',
-        marginRight: 16,
     },
     botTimestamp: {
+        alignSelf: 'flex-start',
         textAlign: 'left',
-        marginLeft: 16,
     },
     techniquesContainer: {
         marginTop: 12,

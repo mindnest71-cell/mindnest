@@ -1,25 +1,22 @@
-import google.generativeai as genai
 import json
+from google.genai import types
+from app.config import genai_client
+from app.services.fallback_responses import get_keyword_fallback
 
-SEVERITY_CLASSIFIER = genai.GenerativeModel("gemini-2.5-flash")
+SYSTEM_INSTRUCTION = """
+You are Mind-Nest, a warm, empathetic, and supportive mental wellness companion.
+Your goal is to provide actionable, non-medical mental health advice based on the provided context.
 
-CHAT_MODEL = genai.GenerativeModel(
-    "gemini-2.5-flash",
-    system_instruction = """
-    You are Mind-Nest, a warm, empathetic, and supportive mental wellness companion.
-    Your goal is to provide actionable, non-medical mental health advice based on the provided context.
-    
-    Guidelines:
-    - Be empathetic and validating. Acknowledge the user's feelings first.
-    - Use the provided context (techniques) to offer specific advice.
-    - If you recommend a technique from the context, simply introduce it and explain WHY it is helpful.
-    - CRITICAL: DO NOT write out the step-by-step instructions in your response. The instructions will be shown to the user in a separate card automatically. Just mention the technique name clearly.
-    - If the context is empty, offer general supportive advice but mention you are still learning.
-    - NEVER diagnose conditions or prescribe medication.
-    - NEVER give medical advice.
-    - Keep responses concise and easy to read.
-    """
-)
+Guidelines:
+- Be empathetic and validating. Acknowledge the user's feelings first.
+- Use the provided context (techniques) to offer specific advice.
+- If you recommend a technique from the context, simply introduce it and explain WHY it is helpful.
+- CRITICAL: DO NOT write out the step-by-step instructions in your response. The instructions will be shown to the user in a separate card automatically. Just mention the technique name clearly.
+- If the context is empty, offer general supportive advice but mention you are still learning.
+- NEVER diagnose conditions or prescribe medication.
+- NEVER give medical advice.
+- Keep responses concise and easy to read.
+"""
 
 
 def classify_severity(message: str) -> str:
@@ -38,7 +35,10 @@ Message: "{message}"
 Classification:"""
 
     try:
-        response = SEVERITY_CLASSIFIER.generate_content(prompt)
+        response = genai_client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+        )
         severity = response.text.strip().upper()
         if severity not in ["LOW", "MODERATE", "HIGH", "CRISIS"]:
             return "MODERATE"
@@ -80,7 +80,13 @@ def generate_response(message: str, context: str, severity: str, crisis_info: li
     full_prompt = "\n\n".join(prompt_parts)
     
     try:
-        response = CHAT_MODEL.generate_content(full_prompt)
+        response = genai_client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=full_prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_INSTRUCTION,
+            ),
+        )
         # Clean up potential markdown code blocks
         text_response = response.text.strip()
         if text_response.startswith("```json"):
@@ -92,8 +98,9 @@ def generate_response(message: str, context: str, severity: str, crisis_info: li
     except Exception as e:
         print(f"Error generating response: {e}")
         
-        fallback_text = "I'm having a moment of difficulty. Please try again."
         fallback_quotes = []
+        
+        # HIGH/CRISIS always gets the safety-first response
         if severity in ["HIGH", "CRISIS"]:
             fallback_text = "I hear how much pain you're in right now. Please, reach out to the support numbers below. You don't have to go through this alone."
             fallback_quotes = [
@@ -101,6 +108,9 @@ def generate_response(message: str, context: str, severity: str, crisis_info: li
                 "This too shall pass.",
                 "You are not alone."
             ]
+        else:
+            # Keyword-based contextual fallback with randomized responses
+            fallback_text = get_keyword_fallback(message, language)
             
         return {
             "text": fallback_text,

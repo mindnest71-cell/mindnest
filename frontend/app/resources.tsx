@@ -1,256 +1,272 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import api from '../utils/api';
 
+import { useTheme } from '../context/theme-context';
+import { useLanguage } from '../context/language-context';
+
+type ResourceItem = {
+  id?: string;
+  name: string;
+  description: string;
+  phone?: string;
+  website?: string;
+  available_hours?: string;
+};
+
 export default function Resources() {
-    const router = useRouter();
-    const [loading, setLoading] = useState(true);
-    const [language, setLanguage] = useState('en'); // 'en' or 'th'
-    const [resources, setResources] = useState([]);
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const { language } = useLanguage();
+  const [resources, setResources] = useState<ResourceItem[]>([]);
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
-    useEffect(() => {
-        fetchResources();
-    }, [language]);
+  useEffect(() => {
+    fetchResources();
+  }, [language]);
 
-    const fetchResources = async () => {
-        setLoading(true);
-        try {
-            const response = await api.get(`/resources/?language=${language}`);
-            setResources(response.data);
-        } catch (error) {
-            console.log("Error fetching resources:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
+  const fetchResources = async () => {
+    setLoading(true);
+    try {
+      const response = await api.get(`/resources/?language=${language}`);
+      const data = Array.isArray(response.data) ? response.data : [];
+      setResources(data);
+    } catch (error) {
+      console.log('Error fetching resources:', error);
+      setResources([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const handleCall = (phoneNumber) => {
-        // Extract the first number if multiple exist (split by /)
-        // Remove all non-numeric characters for the `tel` link
-        const cleanNumber = phoneNumber.split('/')[0].replace(/[^0-9]/g, '');
-        Linking.openURL(`tel:${cleanNumber}`);
-    };
+  const handleCall = (phoneNumber: string) => {
+    const cleanNumber = phoneNumber.split('/')[0].replace(/[^0-9]/g, '');
+    Linking.openURL(`tel:${cleanNumber}`);
+  };
 
-    const handleWebsite = (url) => {
-        Linking.openURL(url);
-    };
+  const handleWebsite = (url: string) => {
+    Linking.openURL(url);
+  };
 
-    const renderItem = ({ item }) => (
-        <View style={styles.card}>
-            <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>{item.name}</Text>
-                <MaterialCommunityIcons name="shield-check" size={20} color="#4F46E5" />
-            </View>
-
-            <Text style={styles.cardDescription}>{item.description}</Text>
-
-            {/* Display Contact Info Text */}
-            {item.phone && (
-                <Text style={styles.contactText}>📞 {item.phone}</Text>
-            )}
-
-            <View style={styles.cardActions}>
-                {item.phone && (
-                    <TouchableOpacity
-                        style={[styles.actionBtn, styles.callBtn]}
-                        onPress={() => handleCall(item.phone)}
-                    >
-                        <MaterialCommunityIcons name="phone" size={18} color="#FFFFFF" />
-                        <Text style={styles.actionBtnText}>Call</Text>
-                    </TouchableOpacity>
-                )}
-
-                {item.website && (
-                    <TouchableOpacity
-                        style={[styles.actionBtn, styles.webBtn]}
-                        onPress={() => handleWebsite(item.website)}
-                    >
-                        <MaterialCommunityIcons name="web" size={18} color="#4F46E5" />
-                        <Text style={[styles.actionBtnText, { color: '#4F46E5' }]}>Website</Text>
-                    </TouchableOpacity>
-                )}
-            </View>
+  const renderItem = ({ item }: { item: ResourceItem }) => (
+    <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>{item.name}</Text>
+          <MaterialCommunityIcons name="shield-check" size={20} color={colors.primary} />
         </View>
-    );
 
-    return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                    <MaterialCommunityIcons name="arrow-left" size={24} color="#1E293B" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Crisis Resources</Text>
-                <View style={{ width: 40 }} />
-            </View>
+      <Text style={styles.cardDescription}>{item.description}</Text>
 
-            <View style={styles.languageToggleContainer}>
-                <View style={styles.languageToggle}>
-                    <TouchableOpacity
-                        style={[styles.langBtn, language === 'en' && styles.langBtnActive]}
-                        onPress={() => setLanguage('en')}
-                    >
-                        <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>English</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.langBtn, language === 'th' && styles.langBtnActive]}
-                        onPress={() => setLanguage('th')}
-                    >
-                        <Text style={[styles.langText, language === 'th' && styles.langTextActive]}>ภาษาไทย</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
+      {item.phone && <Text style={styles.contactText}>📞 {item.phone}</Text>}
 
-            {loading ? (
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#4F46E5" />
-                </View>
-            ) : (
-                <FlatList
-                    data={resources}
-                    renderItem={renderItem}
-                    keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
-                    contentContainerStyle={styles.listContent}
-                    ListEmptyComponent={
-                        <Text style={styles.emptyText}>No resources found for this language.</Text>
-                    }
-                />
-            )}
-        </SafeAreaView>
-    );
+      <View style={styles.cardActions}>
+        {item.phone && (
+          <TouchableOpacity
+            style={[styles.actionBtn, styles.callBtn]}
+            onPress={() => handleCall(item.phone as string)}
+          >
+            <MaterialCommunityIcons name="phone" size={18} color={colors.textOnPrimary} />
+            <Text style={styles.actionBtnText}>Call</Text>
+          </TouchableOpacity>
+        )}
+
+        {item.website && (
+          <TouchableOpacity
+            style={[styles.actionBtn, styles.webBtn]}
+            onPress={() => handleWebsite(item.website as string)}
+          >
+            <MaterialCommunityIcons name="web" size={18} color={colors.primary} />
+            <Text style={[styles.actionBtnText, { color: colors.primary }]}>Website</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <MaterialCommunityIcons name="arrow-left" size={24} color={colors.icon} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Crisis Resources</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={resources}
+          renderItem={renderItem}
+          keyExtractor={(item, index) => item.id?.toString() ?? `${item.name}-${index}`}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>No resources found for this language.</Text>
+          }
+        />
+      )}
+    </SafeAreaView>
+  );
 }
 
-const styles = StyleSheet.create({
+type ThemeColors = ReturnType<typeof useTheme>['colors'];
+
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
     container: {
-        flex: 1,
-        backgroundColor: '#F8FAFC',
+      flex: 1,
+      backgroundColor: colors.background,
     },
+
     header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingVertical: 16,
-        backgroundColor: '#FFFFFF',
-        borderBottomWidth: 1,
-        borderBottomColor: '#E2E8F0',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 18,
+      paddingVertical: 14,
+      marginHorizontal: 18,
+      marginTop: 12,
+      borderRadius: 20,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
+
     headerTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#1E293B',
+      fontSize: 16,
+      fontWeight: '900',
+      color: colors.text,
+      letterSpacing: 0.2,
     },
+
     backBtn: {
-        padding: 8,
-        borderRadius: 8,
-        backgroundColor: '#F1F5F9',
+      width: 40,
+      height: 40,
+      borderRadius: 999,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surface2,
     },
-    languageToggleContainer: {
-        padding: 20,
-        backgroundColor: '#FFFFFF',
-    },
-    languageToggle: {
-        flexDirection: 'row',
-        backgroundColor: '#F1F5F9',
-        borderRadius: 12,
-        padding: 4,
-    },
-    langBtn: {
-        flex: 1,
-        paddingVertical: 10,
-        alignItems: 'center',
-        borderRadius: 10,
-    },
-    langBtnActive: {
-        backgroundColor: '#FFFFFF',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
-    },
-    langText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#64748B',
-    },
-    langTextActive: {
-        color: '#4F46E5',
-    },
+
     loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
+
     listContent: {
-        padding: 20,
-        gap: 20,
+      paddingHorizontal: 18,
+      paddingTop: 12,
+      paddingBottom: 24,
+      gap: 14,
     },
+
     card: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 20,
-        padding: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        elevation: 2,
+      backgroundColor: colors.surface,
+      borderRadius: 22,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 1,
+      shadowRadius: 18,
+      elevation: 10,
     },
+
     cardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: 8,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      marginBottom: 8,
     },
+
     cardTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#1E293B',
-        flex: 1,
-        marginRight: 10,
+      fontSize: 16,
+      fontWeight: '900',
+      color: colors.text,
+      flex: 1,
+      marginRight: 10,
     },
+
     cardDescription: {
-        fontSize: 14,
-        color: '#64748B',
-        lineHeight: 22,
-        lineHeight: 22,
-        marginBottom: 10,
+      fontSize: 13,
+      color: colors.textMuted,
+      lineHeight: 20,
+      marginBottom: 10,
     },
+
     contactText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#1E293B',
-        marginBottom: 16,
+      fontSize: 13,
+      fontWeight: '800',
+      color: colors.text,
+      marginBottom: 14,
     },
+
     cardActions: {
-        flexDirection: 'row',
-        gap: 12,
+      flexDirection: 'row',
+      gap: 12,
     },
+
     actionBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 10,
-        paddingHorizontal: 16,
-        borderRadius: 12,
-        gap: 8,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      borderRadius: 14,
+      gap: 8,
+      borderWidth: 1,
     },
+
     callBtn: {
-        backgroundColor: '#4F46E5',
+      backgroundColor: withAlpha(colors.primary, 0.22),
+      borderColor: withAlpha(colors.primary, 0.32),
     },
+
     webBtn: {
-        backgroundColor: '#EEF2FF',
+      backgroundColor: colors.surface2,
+      borderColor: colors.border,
     },
+
     actionBtnText: {
-        fontWeight: '600',
-        fontSize: 14,
-        color: '#FFFFFF',
+      fontWeight: '900',
+      fontSize: 13,
+      color: colors.textOnPrimary,
     },
+
     emptyText: {
-        textAlign: 'center',
-        marginTop: 40,
-        color: '#94A3B8',
-        fontSize: 16,
-    }
-});
+      textAlign: 'center',
+      marginTop: 40,
+      color: colors.textMuted,
+      fontSize: 15,
+      fontWeight: '800',
+    },
+  });
+
+const withAlpha = (hexColor: string, alpha: number) => {
+  if (!hexColor.startsWith('#')) {
+    return hexColor;
+  }
+
+  let hex = hexColor.replace('#', '');
+  if (hex.length === 3) {
+    hex = hex
+      .split('')
+      .map((char) => `${char}${char}`)
+      .join('');
+  }
+
+  const bigint = parseInt(hex, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};

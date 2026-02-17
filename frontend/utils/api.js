@@ -8,7 +8,7 @@ import { Platform } from 'react-native';
 // TEST_MODE: 
 //   true  = Use local development server (localhost/10.0.2.2)
 //   false = Use Railway production server
-const TEST_MODE = false;
+const TEST_MODE = process.env.EXPO_PUBLIC_TEST_MODE === 'true';
 
 // Production URL (Railway)
 const PRODUCTION_URL = 'https://mindnest-production-a1a7.up.railway.app';

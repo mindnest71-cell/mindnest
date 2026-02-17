@@ -1,17 +1,22 @@
-import google.generativeai as genai
-from app.config import GEMINI_API_KEY
+from app.config import genai_client
+from google.genai import types
 
 def generate_embedding(text: str) -> list[float]:
     """
-    Generates an embedding for the given text using Gemini's text-embedding-004 model.
+    Generates an embedding for the given text using Gemini's embedding model.
+    Output dimensionality is 3072 to match the Supabase vector column.
     """
     try:
-        result = genai.embed_content(
-            model="models/text-embedding-004",
-            content=text,
-            task_type="retrieval_query"
+        result = genai_client.models.embed_content(
+            model="gemini-embedding-001",
+            contents=text,
+            config=types.EmbedContentConfig(
+                output_dimensionality=768,
+            ),
         )
-        return result['embedding']
+        embedding = result.embeddings[0].values
+        print(f"[DEBUG] Embedding model: gemini-embedding-001, dimensions: {len(embedding)}")
+        return embedding
     except Exception as e:
         print(f"Error generating embedding: {e}")
         return []

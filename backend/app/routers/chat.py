@@ -57,6 +57,8 @@ async def get_chat_history(authorization: str = Header(None)):
             "text": chat.message,
             "isUser": chat.role == "user",
             "timestamp": chat.timestamp.strftime("%I:%M %p"),
+            "timestamp_iso": chat.timestamp.isoformat(),
+            "date": chat.timestamp.date().isoformat(),
             "techniques": [], # Could store these if needed
             "crisis_resources": [],
             "severity": "", 
